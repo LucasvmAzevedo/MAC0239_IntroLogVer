@@ -1,0 +1,774 @@
+% Compilação recomendada: xelatex logica.tex (duas vezes).
+\documentclass[10pt,aspectratio=169]{beamer}
+
+% ------------------------------------------------------------
+% Tema: Metropolis (limpo e elegante)
+% ------------------------------------------------------------
+\usetheme{metropolis}
+\metroset{block=fill, sectionpage=none, subsectionpage=none, numbering=fraction}
+
+\usepackage{iftex}
+\ifPDFTeX\usepackage[utf8]{inputenc}\usepackage[T1]{fontenc}\else\usepackage{fontspec}\setsansfont{Latin Modern Sans}\fi
+\usepackage{amsmath,amssymb}
+\usepackage{mathtools}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta}
+\usepackage{forest}
+
+\usepackage{booktabs}
+\usepackage{array}
+
+\setbeamertemplate{frame footer}{Lógica para Computação}
+
+% Paleta discreta
+\definecolor{mDarkBlue}{HTML}{2E3A46}
+\definecolor{mAccent}{HTML}{8C6D46}
+\setbeamercolor{palette primary}{bg=mDarkBlue,fg=white}
+\setbeamercolor{progress bar}{fg=mAccent,bg=mDarkBlue!20}
+\setbeamercolor{alerted text}{fg=mAccent}
+
+% Macro para referência ao livro-base, exibida discretamente no rodapé do título de seção
+\newcommand{\refbook}[1]{{\footnotesize\color{mAccent}\textit{Ref.: #1}}}
+
+\newcommand{\Prop}{\mathrm{Prop}}
+\newcommand{\dest}[1]{\alert{#1}}
+
+\title{Lógica para a Computação}
+\subtitle{Resumo de aula: lógica proposicional clássica}
+\author{}
+\date{}
+
+\begin{document}
+
+\begin{frame}[plain]
+\vfill
+{\LARGE\bfseries Lógica para a Computação\par}
+\medskip
+{\large Resumo de aula: lógica proposicional clássica\par}
+\bigskip
+{\color{mAccent} Sintaxe, semântica e sistemas de prova\par}
+\vfill
+\end{frame}
+
+\begin{frame}{Sumário}
+  \small
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \begin{enumerate}
+        \item Expressividade e sintaxe
+        \item Dedução natural
+        \item Semântica
+        \item Modelos, satisfazibilidade e validade
+        \item Tabela verdade e falsificação
+        \item Consequência lógica
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \begin{enumerate}
+        \setcounter{enumi}{6}
+        \item Tableaux semânticos
+        \item Corretude e completude
+        \item Equivalências
+        \item Formas normais
+        \item Resolução
+      \end{enumerate}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==============================================================
+\section{Expressividade e sintaxe}
+% ==============================================================
+\begin{frame}{Alfabeto da lógica proposicional}
+  \begin{block}{Símbolos primitivos}
+    \begin{itemize}
+      \item Variáveis proposicionais: $p, q, r, \dots \in \mathrm{Prop}$
+      \item Conectivos: $\neg,\ \land,\ \lor,\ \rightarrow,\ \leftrightarrow$
+      \item Símbolos auxiliares: $(\,,\,)$
+    \end{itemize}
+  \end{block}
+  \begin{alertblock}{Definição indutiva de fórmula (FBF)}
+    \begin{enumerate}
+      \item Toda variável $p\in\mathrm{Prop}$ é uma fórmula;
+      \item Se $\varphi$ é fórmula, $\neg\varphi$ também é;
+      \item Se $\varphi$ e $\psi$ são fórmulas, então $(\varphi\land\psi)$, $(\varphi\lor\psi)$, $(\varphi\rightarrow\psi)$ e $(\varphi\leftrightarrow\psi)$ também são;
+      \item Nada mais é fórmula.
+    \end{enumerate}
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Precedência e árvore sintática}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{Convenção de precedência} (do mais forte ao mais fraco):
+      \[ \neg \;>\; \land \;>\; \lor \;>\; \rightarrow \;>\; \leftrightarrow \]
+      Isso permite escrever $p\lor q \rightarrow \neg r$ em vez de\\
+      $((p\lor q)\rightarrow(\neg r))$.
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \textbf{Árvore de } $(p\lor q)\rightarrow \neg r$\par\medskip
+      \begin{tikzpicture}[level distance=10mm, sibling distance=16mm,
+          every node/.style={font=\small}]
+        \node {$\rightarrow$}
+          child { node {$\lor$}
+            child { node {$p$} }
+            child { node {$q$} } }
+          child { node {$\neg$}
+            child { node {$r$} } };
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==============================================================
+
+\begin{frame}{Linguagem, fórmulas e metalinguagem}
+
+\begin{itemize}
+\item $p,q,r$: variáveis proposicionais. Representam afirmações tratadas como unidades.
+\item $\varphi,\psi,\chi$: metavariáveis. Representam fórmulas arbitrárias.
+\item $\Gamma,\Delta$: conjuntos de fórmulas, usualmente usados como premissas.
+\item Um \dest{literal} é uma variável $p$ ou sua negação $\neg p$.
+\item $\bot$ e $\top$ abreviam $p\land\neg p$ e $p\lor\neg p$, respectivamente.
+\end{itemize}
+\begin{block}{Escopo e convenções}
+Trabalhamos na lógica proposicional \textbf{clássica}, com dois valores.
+Os conectivos são verofuncionais. Quantificadores e estrutura interna de predicados exigem outra linguagem.
+\end{block}
+Usaremos parênteses para evitar ambiguidades entre conectivos repetidos.
+\end{frame}
+
+\section{Dedução natural}
+% ==============================================================
+
+\begin{frame}{Sistema de dedução natural}
+  \begin{itemize}
+    \item Sistema \dest{sintático}: prova-se $\varphi$ manipulando símbolos, sem apelar a valores-verdade.
+    \item Cada conectivo tem regras de \dest{introdução} (I) e \dest{eliminação} (E).
+    \item Hipóteses podem ser abertas e depois \dest{descartadas} (fechadas) dentro de uma subprova.
+  \end{itemize}
+  \vspace{4mm}
+  \begin{block}{Duas regras centrais}
+    \[
+      \dfrac{\varphi \quad \varphi\rightarrow\psi}{\psi}\ (\rightarrow\!E,\ \textit{Modus Ponens})
+      \qquad\qquad
+      \cfrac{\begin{array}{c}[\varphi]\\ \vdots \\ \psi\end{array}}{\varphi\rightarrow\psi}\ (\rightarrow\!I)
+    \]
+  \end{block}
+\end{frame}
+
+
+\begin{frame}{Exemplo de prova}
+
+\textbf{Objetivo:} $\vdash (p\land q)\to p$.
+\begin{center}
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{cll}
+\toprule
+Linha & Fórmula & Justificativa\\\midrule
+1 & $[p\land q]^1$ & Hipótese temporária\\
+2 & $p$ & $\land E$ aplicada à linha 1\\
+3 & $(p\land q)\to p$ & $\to I$, linhas 1--2, descarga de $1$\\
+\bottomrule
+\end{tabular}\par
+\end{center}
+A conclusão não depende de hipóteses abertas: é um \dest{teorema}.
+\begin{block}{O que a descarga faz}
+A subprova estabelece que, sob a hipótese $p\land q$, obtemos $p$.
+A regra $\to I$ transforma essa dependência em uma implicação.
+\end{block}
+\end{frame}
+
+
+% ==============================================================
+
+\begin{frame}{Derivabilidade e hipóteses abertas}
+
+\[\Gamma\vdash_S\varphi\]
+Significa que existe uma derivação finita de $\varphi$ no sistema $S$, cujas hipóteses não descarregadas pertencem a $\Gamma$.
+\begin{itemize}
+\item \dest{Teorema}: $\vdash_S\varphi$, uma derivação sem premissas abertas.
+\item \dest{Consistência sintática}: $\Gamma\nvdash_S\bot$.
+\item Uma hipótese temporária pode desaparecer do conjunto de dependências por uma regra de descarga.
+\end{itemize}
+\begin{block}{Exemplo}
+$\{p\land q\}\vdash p$ usa uma premissa.\\
+$\vdash(p\land q)\to p$ expressa um teorema.
+\end{block}
+\end{frame}
+
+\begin{frame}{Dedução natural: conjunção e disjunção}
+
+\[\frac{\varphi\quad\psi}{\varphi\land\psi}\;(\land I)
+\qquad\frac{\varphi\land\psi}{\varphi}\;(\land E_1)
+\qquad\frac{\varphi\land\psi}{\psi}\;(\land E_2)\]
+\[\frac{\varphi}{\varphi\lor\psi}\;(\lor I_1)
+\qquad\frac{\psi}{\varphi\lor\psi}\;(\lor I_2)\]
+\[\frac{\varphi\lor\psi\qquad
+\begin{array}{c}[\varphi]^i\\\vdots\\\chi\end{array}\qquad
+\begin{array}{c}[\psi]^j\\\vdots\\\chi\end{array}}
+{\chi}\;(\lor E,i,j)\]
+Na eliminação de $\lor$, a mesma conclusão deve seguir de \dest{cada alternativa}. As hipóteses marcadas são descarregadas.
+\end{frame}
+
+\begin{frame}{Dedução natural: negação e lógica clássica}
+
+\[\frac{\begin{array}{c}[\varphi]^i\\\vdots\\\bot\end{array}}{\neg\varphi}\;(\neg I,i)
+\qquad\frac{\varphi\quad\neg\varphi}{\bot}\;(\neg E)
+\qquad\frac{\bot}{\psi}\;(\bot E)\]
+\begin{block}{Uma regra especificamente clássica}
+\[\frac{\neg\neg\varphi}{\varphi}\;(\mathrm{DNE})\]
+A eliminação da dupla negação permite recuperar a lógica clássica sobre as regras intuicionistas usuais.
+\end{block}
+O bicondicional pode ser abreviação de $(\varphi\to\psi)\land(\psi\to\varphi)$. A completude depende das regras efetivamente adotadas.
+\end{frame}
+
+\section{Semântica}
+% ==============================================================
+\begin{frame}{Valorações}
+  \begin{block}{Definição}
+    Uma \dest{valoração} é uma função $v:\mathrm{Prop}\to\{V,F\}$, estendida a todas as fórmulas por:
+  \end{block}
+  \begin{center}
+    \begin{tabular}{c|c}
+      \toprule
+      $\varphi$ & $v(\varphi)$ \\
+      \midrule
+      $\neg\alpha$ & $V$ sse $v(\alpha)=F$\\
+      $\alpha\land\beta$ & $V$ sse $v(\alpha)=V$ e $v(\beta)=V$\\
+      $\alpha\lor\beta$ & $V$ sse $v(\alpha)=V$ ou $v(\beta)=V$\\
+      $\alpha\rightarrow\beta$ & $F$ sse $v(\alpha)=V$ e $v(\beta)=F$\\
+      $\alpha\leftrightarrow\beta$ & $V$ sse $v(\alpha)=v(\beta)$\\
+      \bottomrule
+    \end{tabular}\par
+  \end{center}
+\end{frame}
+
+\begin{frame}{Avaliação de uma fórmula}
+  Seja $v(p)=V,\ v(q)=F,\ v(r)=V$. Avalie $\varphi = (p\rightarrow q)\lor r$:
+  \[
+    v(p\rightarrow q) = F \qquad\Rightarrow\qquad v(\varphi) = F \lor v(r) = F\lor V = V
+  \]
+  \begin{alertblock}{Ideia-chave}
+    A semântica atribui \dest{significado} (valor-verdade) às fórmulas sintáticas — independentemente de como elas foram provadas.
+  \end{alertblock}
+\end{frame}
+
+% ==============================================================
+\section{Modelos, satisfazibilidade e validade}
+% ==============================================================
+
+\begin{frame}{Classificação das fórmulas}
+
+\small
+\renewcommand{\arraystretch}{1.45}
+\begin{tabular}{p{2.7cm}p{7.9cm}}
+\toprule
+Noção & Definição\\\midrule
+Satisfação / modelo & $v\models\varphi$ significa $v(\varphi)=V$. A valoração $v$ é modelo de $\varphi$.\\
+Satisfazibilidade & $\varphi$ é satisfazível se $\exists v\;(v\models\varphi)$.\\
+Validade / tautologia & $\models\varphi$ significa $\forall v\;(v\models\varphi)$.\\
+Insatisfazibilidade & $\varphi$ é insatisfazível se $\forall v\;(v(\varphi)=F)$.\\
+Contingência & Existem $v,w$ com $v(\varphi)=V$ e $w(\varphi)=F$.\\
+\bottomrule
+\end{tabular}\par
+\medskip
+Toda fórmula válida é satisfazível. Uma fórmula satisfazível pode ser contingente.
+\end{frame}
+
+
+\begin{frame}{Exemplo}
+  \[ \varphi = p \lor \neg p \quad(\text{válida}) \qquad\qquad \psi = p\land \neg p \quad(\text{insatisfazível}) \]
+  \[ \chi = p \rightarrow q \quad(\text{satisfazível, mas \emph{não} válida}) \]
+  \begin{itemize}
+    \item $\varphi$ é verdadeira em \emph{toda} valoração $\Rightarrow$ tautologia.
+    \item $\chi$ é falsa apenas quando $v(p)=V,\,v(q)=F$: tem modelos e "não modelos".
+  \end{itemize}
+\end{frame}
+
+% ==============================================================
+
+\begin{frame}{Satisfazibilidade de conjuntos de fórmulas}
+
+\[v\models\Gamma\quad\Longleftrightarrow\quad
+\forall\gamma\in\Gamma\;(v\models\gamma).\]
+$\Gamma$ é \dest{satisfazível} se existe \textbf{uma mesma valoração} que satisfaz todas as suas fórmulas.
+\begin{block}{Cuidado com a ordem dos quantificadores}
+$p$ e $\neg p$ são individualmente satisfazíveis, mas $\{p,\neg p\}$ é insatisfazível.
+\end{block}
+\[\models\varphi\iff\{\neg\varphi\}\text{ é insatisfazível}.\]
+\[\varphi\text{ é contingente}\iff
+\varphi\text{ e }\neg\varphi\text{ são satisfazíveis}.\]
+O conjunto vazio é satisfeito por toda valoração.
+\end{frame}
+
+\section{Tabela verdade e falsificação}
+% ==============================================================
+\begin{frame}{Tabela verdade: método de decisão}
+  Para $n$ variáveis, há $2^n$ valorações possíveis — construir todas verifica validade/satisfazibilidade por força bruta.
+  \begin{center}
+    \small
+    \begin{tabular}{cc|c}
+      \toprule
+      $p$ & $q$ & $p\rightarrow q$\\
+      \midrule
+      V & V & V \\
+      V & F & F \\
+      F & V & V \\
+      F & F & V \\
+      \bottomrule
+    \end{tabular}\par
+  \end{center}
+  \dest{Limitação}: o número de linhas cresce exponencialmente com o número de variáveis.
+\end{frame}
+
+\begin{frame}{Método da falsificação}
+  \begin{block}{Ideia}
+    Para testar se $\models\varphi$, tenta-se \dest{construir} uma valoração que torne $\varphi$ falsa. Se toda tentativa gera contradição, $\varphi$ é válida.
+  \end{block}
+  \textbf{Exemplo:} mostrar que $\models (p\rightarrow q)\lor(q\rightarrow p)$.
+  \begin{itemize}
+    \item Suponha $v\big((p\to q)\lor(q\to p)\big)=F$;
+    \item Então $v(p\to q)=F$ \emph{e} $v(q\to p)=F$;
+    \item Da primeira: $v(p)=V,v(q)=F$; da segunda: $v(q)=V,v(p)=F$ — \dest{contradição};
+    \item Logo não há falsificação possível: a fórmula é válida.
+  \end{itemize}
+\end{frame}
+
+% ==============================================================
+
+\begin{frame}{Tabela-verdade do exemplo central}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.45}
+\begin{tabular}{cc|c|c|c}
+\toprule
+$p$&$q$&$p\land q$&$(p\land q)\to p$&$\neg((p\land q)\to p)$\\\midrule
+V&V&V&V&F\\
+V&F&F&V&F\\
+F&V&F&V&F\\
+F&F&F&V&F\\\bottomrule
+\end{tabular}\par
+\end{center}
+A implicação é verdadeira em todas as linhas. Sua negação é insatisfazível.
+\begin{block}{Ligação com o tableau}
+O tableau tenta construir uma linha com a última coluna verdadeira.
+O fechamento demonstra que essa linha não existe.
+\end{block}
+\end{frame}
+
+\section{Consequência lógica}
+% ==============================================================
+\begin{frame}{Consequência lógica}
+  \begin{block}{Definição}
+    $\Gamma \models \varphi$ (``$\varphi$ é consequência lógica de $\Gamma$'') se \dest{toda} valoração que satisfaz todas as fórmulas de $\Gamma$ também satisfaz $\varphi$.
+  \end{block}
+  \begin{itemize}
+    \item Caso $\Gamma=\emptyset$: recai na validade, $\models\varphi$.
+    \item Para $\Gamma=\{\gamma_1,\dots,\gamma_n\}$ finito:
+    \[
+      \Gamma\models\varphi \quad\Longleftrightarrow\quad \models (\gamma_1\land\cdots\land\gamma_n)\rightarrow\varphi
+    \]
+  \end{itemize}
+  \textbf{Exemplo:} $\{p\rightarrow q,\, p\}\models q$ (Modus Ponens é válido semanticamente).
+\end{frame}
+
+% ==============================================================
+
+\begin{frame}{Contramodelos e redução à insatisfazibilidade}
+
+\[\Gamma\not\models\varphi\iff
+\exists v\;(v\models\Gamma\ \text{e}\ v(\varphi)=F).\]
+Essa valoração é um \dest{contramodelo do argumento}.
+\[\boxed{\Gamma\models\varphi\iff
+\Gamma\cup\{\neg\varphi\}\text{ é insatisfazível}}\]
+\textbf{Exemplo inválido:} $\{p\to q,q\}\not\models p$.\\
+O contramodelo $v(p)=F$, $v(q)=V$ satisfaz ambas as premissas e falsifica a conclusão.
+\begin{block}{Premissas insatisfazíveis}
+Se $\Gamma$ não tem modelos, então $\Gamma\models\varphi$ para toda $\varphi$.
+Não existe contramodelo com todas as premissas verdadeiras.
+\end{block}
+\end{frame}
+
+\section{Tableaux semânticos}
+% ==============================================================
+
+\begin{frame}{Tableaux: ideia geral}
+
+Um tableau organiza a busca por uma valoração que satisfaça as fórmulas da raiz.
+\begin{itemize}
+\item Fórmulas no \dest{mesmo ramo} devem valer simultaneamente.
+\item Uma \dest{ramificação} representa alternativas semânticas.
+\item Um ramo fecha ($\times$) ao conter $\psi$ e $\neg\psi$. Quando $\psi$ é atômica, temos literais complementares.
+\item O tableau fecha quando \dest{todos} os seus ramos fecham.
+\end{itemize}
+\begin{block}{Três tarefas, o mesmo método}
+Satisfazibilidade de $\Gamma$: raiz $\Gamma$.\\
+Validade de $\varphi$: raiz $\neg\varphi$.\\
+Consequência $\Gamma\models\varphi$: raiz $\Gamma\cup\{\neg\varphi\}$.
+\end{block}
+\end{frame}
+
+
+
+
+\begin{frame}{Tableaux: regras sem ramificação}
+
+\small
+\renewcommand{\arraystretch}{1.65}
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Fórmula no ramo & Acrescentar ao mesmo ramo\\\midrule
+$\neg\neg\varphi$ & $\varphi$\\
+$\varphi\land\psi$ & $\varphi$ e $\psi$\\
+$\neg(\varphi\lor\psi)$ & $\neg\varphi$ e $\neg\psi$\\
+$\neg(\varphi\to\psi)$ & $\varphi$ e $\neg\psi$\\\bottomrule
+\end{tabular}\par
+\end{center}
+\begin{block}{Por que a implicação negada não ramifica?}
+$\varphi\to\psi$ é falsa exatamente quando $\varphi$ é verdadeira \textbf{e} $\psi$ é falsa. As duas exigências são simultâneas.
+\end{block}
+\end{frame}
+
+\begin{frame}{Tableaux: regras com ramificação}
+
+\small
+\renewcommand{\arraystretch}{1.6}
+\begin{tabular}{lll}
+\toprule
+Fórmula & Ramo esquerdo & Ramo direito\\\midrule
+$\varphi\lor\psi$ & $\varphi$ & $\psi$\\
+$\neg(\varphi\land\psi)$ & $\neg\varphi$ & $\neg\psi$\\
+$\varphi\to\psi$ & $\neg\varphi$ & $\psi$\\
+$\varphi\leftrightarrow\psi$ & $\varphi,\psi$ & $\neg\varphi,\neg\psi$\\
+$\neg(\varphi\leftrightarrow\psi)$ & $\varphi,\neg\psi$ & $\neg\varphi,\psi$\\\bottomrule
+\end{tabular}\par
+\medskip
+Cada ramo filho \dest{herda todas as fórmulas do caminho anterior}.\\
+Uma vírgula em uma célula indica fórmulas no mesmo ramo.\\
+Basta uma alternativa satisfazível para manter o conjunto satisfazível.
+\end{frame}
+\begin{frame}{Exemplo: tableau para $(p\land q)\rightarrow p$}
+
+\begin{columns}[T]
+\begin{column}{.48\textwidth}
+\centering
+\begin{forest}
+for tree={grow'=south, edge={-}, l sep=2mm, inner sep=1.5pt, font=\small}
+[{$\neg((p\land q)\to p)$}
+ [{$p\land q$}
+  [{$\neg p$}
+   [{$p$}
+    [{$q$}
+     [{$\times\quad p,\neg p$}]]]]]]
+\end{forest}
+\end{column}
+\begin{column}{.50\textwidth}
+\small
+\textbf{1. Negar a fórmula a testar.}\\
+Procuramos um contramodelo da implicação.
+\medskip
+
+\textbf{2. Expandir a implicação negada.}\\
+$\neg(A\to B)$ exige $A$ e $\neg B$ no mesmo ramo.
+\medskip
+
+\textbf{3. Expandir a conjunção.}\\
+$p\land q$ exige $p$ e $q$ no mesmo ramo.
+\medskip
+
+\textbf{4. Fechar o único ramo.}\\
+$p$ e $\neg p$ são incompatíveis.
+\end{column}
+\end{columns}
+\medskip
+\dest{Logo, $\models(p\land q)\to p$.} Não há ramificação neste exemplo.
+\end{frame}
+
+
+% ==============================================================
+
+\begin{frame}{Exemplo ramificado: modus ponens}
+
+\textbf{Objetivo:} $\{p\to q,p\}\models q$. Raiz: $p\to q,p,\neg q$.
+\begin{center}
+\begin{forest}
+for tree={grow'=south, l sep=5mm, s sep=22mm, font=\normalsize}
+[{$p\to q,\quad p,\quad\neg q$}
+ [{$\neg p$} [{$\times\quad p,\neg p$}]]
+ [{$q$} [{$\times\quad q,\neg q$}]]]
+\end{forest}
+\end{center}
+A regra de $\to$ cria duas alternativas. Ambas entram em conflito com fórmulas herdadas da raiz.
+\medskip
+
+Todos os ramos fecham. Portanto, não há contramodelo do argumento.
+\end{frame}
+
+\begin{frame}{Ramo aberto, saturação e leitura de modelo}
+
+Um ramo é \dest{saturado} quando todas as decomposições exigidas pelas regras já foram realizadas nele.
+\begin{itemize}
+\item Um ramo aberto ainda incompleto \textbf{não garante} satisfazibilidade.
+\item Num ramo aberto saturado, atribua $V$ aos átomos positivos e $F$ aos negados. Átomos ausentes podem receber qualquer valor.
+\end{itemize}
+\begin{block}{Exemplo: $p\to q$ não é válida}
+A raiz $\neg(p\to q)$ produz $p$ e $\neg q$ no mesmo ramo.\\
+O ramo está aberto e saturado. O modelo da raiz é $v(p)=V$, $v(q)=F$, um contramodelo da fórmula original.
+\end{block}
+Para uma raiz proposicional finita, expandir cada ocorrência apenas uma vez por ramo produz uma árvore finita.
+\end{frame}
+
+\begin{frame}{Tableaux: roteiro de aplicação}
+
+\begin{enumerate}
+\item Escolher a raiz de acordo com a tarefa: satisfazibilidade, validade ou consequência.
+\item Aplicar as regras sem ramificação antes das ramificações, quando conveniente.
+\item Continuar as decomposições em cada ramo aberto, preservando as fórmulas herdadas.
+\item Fechar ramos com fórmulas complementares.
+\item Se todos fecham, a raiz é insatisfazível. Se sobra ramo aberto saturado, extrair um modelo da raiz.
+\end{enumerate}
+\begin{alertblock}{Erro frequente}
+Fórmulas em ramos diferentes não fecham um ramo. A contradição precisa ocorrer no mesmo caminho da raiz até uma folha.
+\end{alertblock}
+\end{frame}
+
+\section{Corretude e completude}
+% ==============================================================
+
+\begin{frame}{Corretude e completude}
+
+Fixe um cálculo $S$ para a lógica proposicional clássica.
+\begin{block}{Corretude (\textit{soundness})}
+\[\Gamma\vdash_S\varphi\quad\Longrightarrow\quad\Gamma\models\varphi.\]
+Toda conclusão derivável preserva a verdade das premissas.
+\end{block}
+\begin{block}{Completude semântica forte}
+\[\Gamma\models\varphi\quad\Longrightarrow\quad\Gamma\vdash_S\varphi.\]
+Toda consequência semântica admite uma derivação no cálculo.
+\end{block}
+Para $\Gamma=\varnothing$: $\vdash_S\varphi\iff\models\varphi$.
+Isso relaciona \dest{demonstrabilidade e validade}, não verdade em uma valoração particular.
+\end{frame}
+
+
+% ==============================================================
+
+\begin{frame}{Por que tableaux são corretos e completos?}
+
+\small
+\textbf{Corretude refutacional.} Se há um tableau fechado para $\Sigma$, então $\Sigma$ é insatisfazível.
+\begin{itemize}
+\item As regras preservam um modelo em pelo menos uma extensão do ramo.
+\item Um ramo fechado não admite modelo. Logo, um modelo da raiz impediria o fechamento de todos os ramos.
+\end{itemize}
+\textbf{Completude refutacional.} Se $\Sigma$ é insatisfazível, existe um tableau fechado para $\Sigma$.
+\begin{itemize}
+\item Para $\Sigma$ finito, uma expansão exaustiva termina.
+\item Um ramo aberto saturado forneceria um modelo, por indução na estrutura das fórmulas. A insatisfazibilidade impede tal ramo.
+\end{itemize}
+Para conjuntos infinitos, a passagem a uma refutação finita usa a compacidade da lógica proposicional.
+\end{frame}
+
+\begin{frame}{Completude, consistência e decidibilidade}
+
+\small
+\begin{itemize}
+\item \dest{Completude fraca}: $\models\varphi\Rightarrow\vdash_S\varphi$.
+\item \dest{Completude forte}: $\Gamma\models\varphi\Rightarrow\Gamma\vdash_S\varphi$, inclusive para $\Gamma$ infinito.
+\item Num cálculo clássico correto e fortemente completo:
+\[\Gamma\nvdash_S\bot\iff\Gamma\text{ é satisfazível}.\]
+\item \dest{Decidibilidade}: existe um algoritmo que termina para toda entrada e responde corretamente ao problema considerado.
+\end{itemize}
+Validade e satisfazibilidade proposicionais de entradas finitas são decidíveis por tabelas-verdade ou tableaux exaustivos.
+\begin{alertblock}{Distinção}
+Completude de um cálculo não implica, por si só, decidibilidade. Também não significa que uma teoria decida toda fórmula por $\varphi$ ou $\neg\varphi$.
+\end{alertblock}
+\end{frame}
+
+\section{Equivalências}
+% ==============================================================
+\begin{frame}{Equivalência lógica}
+  \begin{block}{Definição}
+    $\varphi \equiv \psi \iff\ \models \varphi\leftrightarrow\psi$ (mesmo valor-verdade em toda valoração).
+  \end{block}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \small
+      \begin{align*}
+        \neg\neg p &\equiv p \\
+        p\land q &\equiv q\land p \\
+        p\lor(q\lor r) &\equiv (p\lor q)\lor r \\
+        p\to q &\equiv \neg p \lor q
+      \end{align*}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \small
+      \begin{align*}
+        \neg(p\land q) &\equiv \neg p \lor \neg q \quad\text{(De Morgan)}\\
+        \neg(p\lor q) &\equiv \neg p \land \neg q \quad\text{(De Morgan)}\\
+        p\land(q\lor r) &\equiv (p\land q)\lor(p\land r)\\
+        p\to q &\equiv \neg q \to \neg p \quad\text{(contrapositiva)}
+      \end{align*}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==============================================================
+
+\begin{frame}{Equivalência, implicação e consequência}
+
+\renewcommand{\arraystretch}{1.55}
+\begin{tabular}{ll}
+\toprule
+Expressão & Natureza\\\midrule
+$\varphi\to\psi$ & Fórmula da linguagem\\
+$\varphi\leftrightarrow\psi$ & Fórmula da linguagem\\
+$\varphi\equiv\psi$ & Relação de equivalência semântica\\
+$\Gamma\models\varphi$ & Relação de consequência semântica\\
+$\Gamma\vdash_S\varphi$ & Relação de derivabilidade sintática\\\bottomrule
+\end{tabular}\par
+\[\varphi\equiv\psi\iff
+(\varphi\models\psi\ \text{e}\ \psi\models\varphi).\]
+A equivalência lógica permite substituir uma subfórmula por outra equivalente em qualquer fórmula proposicional.
+\end{frame}
+
+\section{Formas normais}
+% ==============================================================
+\begin{frame}{FNC e FND}
+  \begin{block}{Formas normais}
+    \begin{itemize}
+      \item \dest{FND} (disjuntiva): $\bigvee_i \big(\bigwedge_j \ell_{ij}\big)$ — disjunção de conjunções de literais.
+      \item \dest{FNC} (conjuntiva): $\bigwedge_i \big(\bigvee_j \ell_{ij}\big)$ — conjunção de disjunções de literais (cláusulas).
+    \end{itemize}
+  \end{block}
+  \begin{alertblock}{Algoritmo de conversão para FNC}
+    \begin{enumerate}
+      \item Eliminar $\leftrightarrow$ e $\rightarrow$ (usando equivalências);
+      \item Empurrar $\neg$ para dentro até literais (De Morgan, dupla negação);
+      \item Distribuir $\lor$ sobre $\land$ até obter cláusulas.
+    \end{enumerate}
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Exemplo de conversão}
+  \[
+    p \rightarrow (q\land r)
+    \ \equiv\ \neg p \lor (q\land r)
+    \ \equiv\ \underbrace{(\neg p\lor q)\land(\neg p\lor r)}_{\text{FNC}}
+  \]
+  \begin{itemize}
+    \item Passo 1: elimina-se $\rightarrow$;
+    \item Passo 2: negação já está aplicada a uma variável proposicional;
+    \item Passo 3: distribui-se $\lor$ sobre $\land$, obtendo duas cláusulas.
+  \end{itemize}
+\end{frame}
+
+% ==============================================================
+
+\begin{frame}{Formas normais: exemplos e cuidados}
+
+\begin{itemize}
+\item \dest{FNN}: negações apenas diante de átomos, usando $\land$ e $\lor$.
+\item \dest{FNC}: $(p\lor\neg q)\land(q\lor r)$.
+\item \dest{FND}: $(p\land q)\lor(\neg p\land r)$.
+\end{itemize}
+Uma cláusula é uma disjunção de literais. Uma cláusula unitária contém um único literal.
+\begin{block}{Equivalência e equissatisfazibilidade}
+Conversões por equivalências preservam todos os modelos na mesma linguagem, mas podem aumentar exponencialmente a fórmula.\\
+Transformações como a de Tseitin usam variáveis auxiliares e preservam satisfazibilidade. Não se deve confundir isso com equivalência na linguagem ampliada.
+\end{block}
+\end{frame}
+
+\section{Resolução}
+% ==============================================================
+\begin{frame}{Regra de resolução}
+  \begin{block}{Regra}
+    A partir de duas cláusulas com um literal complementar:
+    \[
+      \dfrac{\ (A \lor p)\qquad (B\lor\neg p)\ }{A\lor B}\ (\text{resolvente})
+    \]
+  \end{block}
+  \begin{itemize}
+    \item Opera apenas sobre \dest{cláusulas} (fórmulas em FNC).
+    \item \dest{Refutação por resolução}: para provar $\Gamma\models\varphi$, nega-se $\varphi$, converte-se $\Gamma\cup\{\neg\varphi\}$ para FNC e aplica-se resolução até derivar a \dest{cláusula vazia} $\Box$ (contradição).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Exemplo de refutação}
+  Mostrar $\{p\rightarrow q,\ p\}\models q$. Cláusulas (negando $q$):
+  \[
+    \{\neg p \lor q\},\qquad \{p\},\qquad \{\neg q\}
+  \]
+  \begin{enumerate}
+    \item Resolver $\{\neg p\lor q\}$ com $\{p\}$ $\Rightarrow$ $\{q\}$;
+    \item Resolver $\{q\}$ com $\{\neg q\}$ $\Rightarrow$ $\Box$ (cláusula vazia).
+  \end{enumerate}
+  Contradição encontrada $\Rightarrow$ o conjunto original com $\neg q$ é insatisfazível $\Rightarrow$ $q$ é consequência lógica.
+\end{frame}
+
+% ==============================================================
+
+\begin{frame}{Resolução: alcance e condição de término}
+
+\textbf{Corretude:} as cláusulas parentais implicam o resolvente.
+\medskip
+
+\textbf{Completude refutacional:} um conjunto finito de cláusulas é insatisfazível se, e somente se, a resolução pode derivar $\Box$.
+\begin{itemize}
+\item $\Box$ é a cláusula vazia: disjunção sem literais, sempre falsa.
+\item O conjunto vazio de cláusulas representa uma conjunção vazia, sempre verdadeira.
+\item Não encontrar $\Box$ em algumas tentativas não basta para concluir satisfazibilidade.
+\item É preciso saturar o conjunto: adicionar todos os resolventes novos até obter $\Box$ ou não haver novas cláusulas.
+\end{itemize}
+Há finitas cláusulas distintas sobre um conjunto finito de átomos. Com eliminação de duplicatas, essa saturação termina.
+\end{frame}
+
+\begin{frame}{Quadro de consulta}
+
+\small
+\renewcommand{\arraystretch}{1.6}
+\begin{tabular}{p{3.9cm}p{6.8cm}}
+\toprule
+Pergunta & Critério\\\midrule
+$\varphi$ é satisfazível? & Alguma valoração satisfaz $\varphi$.\\
+$\varphi$ é válida? & Toda valoração satisfaz $\varphi$.\\
+$\Gamma\models\varphi$? & $\Gamma\cup\{\neg\varphi\}$ é insatisfazível.\\
+$\Gamma\not\models\varphi$? & Há modelo de $\Gamma$ que falsifica $\varphi$.\\
+Tableau fechado? & Todas as alternativas da raiz são impossíveis.\\
+Ramo aberto saturado? & Permite obter um modelo da raiz.\\
+Cálculo correto e completo? & $\Gamma\vdash_S\varphi\iff\Gamma\models\varphi$.\\\bottomrule
+\end{tabular}\par
+\end{frame}
+
+\begin{frame}{Exercícios de revisão}
+
+\begin{enumerate}
+\item Classifique $p\lor\neg p$, $p\land\neg p$ e $p\to q$.
+\item Prove $\vdash(p\land q)\to q$ por dedução natural.
+\item Construa um tableau para testar $(p\lor q)\to p$.
+\item Teste $\{p\to q,\neg q\}\models\neg p$ por tableau.
+\item Converta $\neg(p\to(q\land r))$ para FNC e para FND.
+\item Refute por resolução $\{p\lor q,\neg p,\neg q\}$.
+\item Explique por que um ramo aberto não saturado é inconclusivo.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Respostas e indicações}
+
+\small
+\begin{enumerate}
+\item Tautologia, contradição e contingência, respectivamente.
+\item Hipótese $p\land q$, seguida de $\land E_2$ e descarga com $\to I$.
+\item Não é válida. A raiz produz $p\lor q,\neg p$. O ramo com $p$ fecha e o ramo com $q$ dá $p=F,q=V$.
+\item A raiz $p\to q,\neg q,\neg\neg p$ produz $p$. Os ramos $\neg p$ e $q$ fecham. A consequência é válida.
+\item FNC: $p\land(\neg q\lor\neg r)$. FND: $(p\land\neg q)\lor(p\land\neg r)$.
+\item Resolver $p\lor q$ com $\neg p$ dá $q$. Resolver $q$ com $\neg q$ dá $\Box$.
+\item Uma expansão pendente pode revelar uma contradição. Por exemplo, $p\land\neg p$ antes de expandir a conjunção.
+\end{enumerate}
+\end{frame}
+
+
+\end{document}
